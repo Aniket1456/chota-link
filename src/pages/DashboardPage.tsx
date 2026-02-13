@@ -7,7 +7,14 @@ const DashboardPage = () => {
   const { links } = useLinks();
 
   const totalClicks = links.reduce((acc, link) => acc + link.clicks, 0);
-  const activeLinks = links.filter(link => !link.expiryDate || new Date(link.expiryDate) > new Date()).length;
+  const activeLinks = links.filter(link => {
+    if (!link.expiryDate) return true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(link.expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+    return expiry >= today;
+  }).length;
   const expiredLinks = links.length - activeLinks;
 
   const stats = [

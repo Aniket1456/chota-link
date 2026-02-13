@@ -1,8 +1,31 @@
+import type { MouseEvent } from "react";
 import { useLinks } from "../context/LinkContextShared";
 import { Trash2, ExternalLink, BarChart2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const LinkTable = () => {
   const { links, deleteLink, incrementClick } = useLinks();
+  const navigate = useNavigate();
+
+  const checkIsExpired = (expiryDate?: string) => {
+    if (!expiryDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+    return expiry < today;
+  };
+
+  const handleLinkClick = (e: MouseEvent, originalUrl: string, shortCode: string, expiryDate?: string) => {
+    e.preventDefault();
+    
+    if (checkIsExpired(expiryDate)) {
+      navigate("/expired");
+    } else {
+      incrementClick(shortCode);
+      window.open(originalUrl, "_blank", "noopener,noreferrer");
+    }
+  };
 
   if (!links.length) {
     return (
@@ -47,12 +70,10 @@ const LinkTable = () => {
 
                   <td className="px-6 py-5">
                     <div className="flex items-center space-x-3">
-                      <a 
-                        href={`${link.originalUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <a
+                        href={link.originalUrl}
                         className="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group/link"
-                        onClick={() => incrementClick(link.shortCode)}
+                        onClick={(e) => handleLinkClick(e, link.originalUrl, link.shortCode, link.expiryDate)}
                       >
                         cl.in/{link.shortCode}
                         <ExternalLink size={14} className="opacity-0 group-hover/link:opacity-100 transition-opacity" />
@@ -72,23 +93,26 @@ const LinkTable = () => {
                   </td>
 
                   <td className="px-6 py-5">
-                    {link.expiryDate ? (
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                        new Date(link.expiryDate) < new Date() 
-                        ? 'bg-red-50 text-red-600 border border-red-100' 
-                        : 'bg-orange-50 text-orange-600 border border-orange-100'
-                      }`}>
-                        {new Date(link.expiryDate).toLocaleDateString(undefined, { dateStyle: 'short' })}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Never</span>
+                    {link.expiryDate ? (() => {
+                      const isExpired = checkIsExpired(link.expiryDate);
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                          isExpired 
+                          ? "bg-red-50 text-red-600" 
+                          : "bg-orange-50 text-orange-600"
+                        }`}>
+                          {isExpired ? "Expired" : new Date(link.expiryDate).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                        </span>
+                      );
+                    })() : (
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Permanent</span>
                     )}
                   </td>
 
                   <td className="px-6 py-5 text-right">
                     <button
                       onClick={() => {
-                        if(confirm("Are you sure you want to delete this link?")) {
+                        if (confirm("Are you sure you want to delete this link?")) {
                           deleteLink(link.id);
                         }
                       }}
